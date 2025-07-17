@@ -7,6 +7,7 @@ import (
     "sync"
     "os/signal"
     "syscall"
+    "github.com/docker/docker/client"
 )
 
 var (
@@ -22,10 +23,16 @@ func main() {
     ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
     defer stop()
 
+    cli, err := client.NewClientWithOpts(client.FromEnv)
+    if err != nil {
+        log.Fatalf("Failed to create Docker client: %v", err)
+    }
+    defer cli.Close()
+
     setupRoutes()
 
     go schedulePods(ctx )
-    go nodeAgent(ctx, nodes[0])
+    go nodeAgent(ctx, nodes[0], cli)
 
     go func() {
         log.Println("API server listening on :8080")
@@ -37,7 +44,7 @@ func main() {
     <-ctx.Done() // Wait for signal
     log.Println("Interrupt received, cleaning up containers...")
 
-    if err := cleanupContainers(); err != nil {
+    if err := cleanupContainers(cli); err != nil {
         log.Printf("Error during cleanup: %v", err)
     }
 

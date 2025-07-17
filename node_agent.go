@@ -11,12 +11,7 @@ import (
 
 var startedContainers []string
 
-func nodeAgent(parentContext context.Context, node *Node) {
-    cli, err := client.NewClientWithOpts(client.FromEnv)
-    if err != nil {
-        log.Fatal(err)
-    }
-
+func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
     for {
         mu.Lock()
         for _, pod := range node.Pods {
@@ -64,11 +59,7 @@ func nodeAgent(parentContext context.Context, node *Node) {
     }
 }
 
-func cleanupContainers() error {
-    cli, err := client.NewClientWithOpts(client.FromEnv)
-    if err != nil {
-        return err
-    }
+func cleanupContainers(cli *client.Client) error {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
