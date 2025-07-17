@@ -7,6 +7,7 @@ import (
 
     "github.com/docker/docker/api/types/container"
     "github.com/docker/docker/client"
+    "github.com/docker/go-connections/nat"
 )
 
 var startedContainers []string
@@ -45,7 +46,19 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
                 resp, err := cli.ContainerCreate(ctx, &container.Config{
                     Image: pod.Image,
                     Tty:   true,
-                }, nil, nil, nil, pod.Name)
+                    ExposedPorts: nat.PortSet{
+                        "8080/tcp": struct{}{},
+                    },
+                }, &container.HostConfig{
+                    PortBindings: nat.PortMap{
+                        "80/tcp": []nat.PortBinding{
+                            {
+                                HostIP:   "127.0.0.1",
+                                HostPort: "8081",
+                            },
+                        },
+                    },
+                }, nil, nil, pod.Name)
                 startedContainers = append(startedContainers, resp.ID)
                 if err != nil {
                     log.Println("Error creating container:", err)
@@ -58,7 +71,6 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
                 }
             }
         }
-        mu.Unlock()
         time.Sleep(10 * time.Second)
     }
 }
