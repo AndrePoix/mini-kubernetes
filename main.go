@@ -4,7 +4,7 @@ import (
     "log"
     "net/http"
     "context"
-    "os"
+    "sync"
     "os/signal"
     "syscall"
 )
@@ -14,7 +14,9 @@ var (
         {Name: "node1", TotalCPU: 2000, TotalMem: 4096},
     }
     pods []*PodSpec
+    mu sync.Mutex // shared mutex for pods and nodes
 )
+
 
 func main() {
     ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)

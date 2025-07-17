@@ -3,10 +3,8 @@ package main
 import (
     "encoding/json"
     "net/http"
-    "sync"
 )
 
-var mu sync.Mutex // shared mutex for pods and nodes
 
 func createPodHandler(w http.ResponseWriter, r *http.Request) {
     var pod PodSpec
