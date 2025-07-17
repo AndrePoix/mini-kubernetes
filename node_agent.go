@@ -9,6 +9,8 @@ import (
     "github.com/docker/docker/client"
 )
 
+var startedContainers []string
+
 func nodeAgent(node *Node) {
     cli, err := client.NewClientWithOpts(client.FromEnv)
     if err != nil {
@@ -43,6 +45,7 @@ func nodeAgent(node *Node) {
                     Image: pod.Image,
                     Tty:   true,
                 }, nil, nil, nil, pod.Name)
+                startedContainers = append(startedContainers, resp.ID)
                 if err != nil {
                     log.Println("Error creating container:", err)
                     continue
@@ -57,4 +60,31 @@ func nodeAgent(node *Node) {
         mu.Unlock()
         time.Sleep(10 * time.Second)
     }
+}
+
+func cleanupContainers() error {
+    cli, err := client.NewClientWithOpts(client.FromEnv)
+    if err != nil {
+        return err
+    }
+    ctx := context.Background()
+
+    for _, containerID := range startedContainers {
+        timeoutSecs := 5 
+        log.Printf("Stopping container %s", containerID)
+        err := cli.ContainerStop(ctx, containerID, container.StopOptions{
+            Timeout: &timeoutSecs,
+        })
+
+        if err != nil {
+            log.Printf("Failed to stop container %s: %v", containerID, err)
+        }
+
+        log.Printf("Removing container %s", containerID)
+        err = cli.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+        if err != nil {
+            log.Printf("Failed to remove container %s: %v", containerID, err)
+        }
+    }
+    return nil
 }
