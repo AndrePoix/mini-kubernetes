@@ -13,8 +13,12 @@ var startedContainers []string
 
 func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
     for {
+        // We copy to not lock the mutex for too long
         mu.Lock()
-        for _, pod := range node.Pods {
+        podsCopy := make([]*PodSpec, len(node.Pods))
+        copy(podsCopy, node.Pods)
+        mu.Unlock()
+        for _, pod := range podsCopy {
             ctx, cancel := context.WithTimeout(parentContext, 10*time.Second)
             defer cancel()
             containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})

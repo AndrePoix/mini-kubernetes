@@ -17,8 +17,14 @@ func createPodHandler(w http.ResponseWriter, r *http.Request) {
     defer mu.Unlock()
     pods = append(pods, &pod)
 
+    response := map[string]interface{}{
+    "message": "Created pod",
+    "code":    http.StatusCreated,
+    "pod":     pod,
+    }
+
     w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(pod)
+    json.NewEncoder(w).Encode(response)
 }
 
 func listPodsHandler(w http.ResponseWriter, r *http.Request) {
