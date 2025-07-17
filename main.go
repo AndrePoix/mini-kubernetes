@@ -17,7 +17,7 @@ var (
 )
 
 func main() {
-    ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT)
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT)
     defer stop()
 
     setupRoutes()
