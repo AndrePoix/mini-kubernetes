@@ -25,7 +25,6 @@ func main() {
     go schedulePods()
     go nodeAgent(nodes[0])
 
-    // Lancer le serveur HTTP dans une goroutine
     go func() {
         log.Println("API server listening on :8080")
         if err := http.ListenAndServe(":8080", nil); err != nil && err != http.ErrServerClosed {
@@ -33,8 +32,7 @@ func main() {
         }
     }()
 
-    // Attente du signal (CTRL+C ou kill -INT)
-    <-ctx.Done()
+    <-ctx.Done() // Wait for signal
     log.Println("Interrupt received, cleaning up containers...")
 
     if err := cleanupContainers(); err != nil {
