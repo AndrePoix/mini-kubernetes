@@ -11,7 +11,7 @@ import (
 
 var startedContainers []string
 
-func nodeAgent(node *Node) {
+func nodeAgent(parentContext context.Context, node *Node) {
     cli, err := client.NewClientWithOpts(client.FromEnv)
     if err != nil {
         log.Fatal(err)
@@ -20,7 +20,9 @@ func nodeAgent(node *Node) {
     for {
         mu.Lock()
         for _, pod := range node.Pods {
-            containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
+            ctx, cancel := context.WithTimeout(parentContext, 10*time.Second)
+            defer cancel()
+            containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
             if err != nil {
                 log.Println("Error listing containers:", err)
                 continue
@@ -41,7 +43,7 @@ func nodeAgent(node *Node) {
 
             if !running {
                 log.Printf("Starting container for pod %s\n", pod.Name)
-                resp, err := cli.ContainerCreate(context.Background(), &container.Config{
+                resp, err := cli.ContainerCreate(ctx, &container.Config{
                     Image: pod.Image,
                     Tty:   true,
                 }, nil, nil, nil, pod.Name)
@@ -51,7 +53,7 @@ func nodeAgent(node *Node) {
                     continue
                 }
 
-                if err := cli.ContainerStart(context.Background(), resp.ID, container.StartOptions{}); err != nil {
+                if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
                     log.Println("Error starting container:", err)
                     continue
                 }
@@ -67,7 +69,9 @@ func cleanupContainers() error {
     if err != nil {
         return err
     }
-    ctx := context.Background()
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
 
     for _, containerID := range startedContainers {
         timeoutSecs := 5 
@@ -77,7 +81,19 @@ func cleanupContainers() error {
         })
 
         if err != nil {
-            log.Printf("Failed to stop container %s: %v", containerID, err)
+            log.Printf("Failed to stop container %s: %v. Will try force remove", containerID, err)
+
+            // Try force remove
+            removeErr := cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{
+                Force: true,
+            })
+            if removeErr != nil {
+                log.Printf("Force remove failed for %s: %v", containerID, removeErr)
+            } else {
+                log.Printf("Force removed container %s", containerID)
+            }
+
+            return nil
         }
 
         log.Printf("Removing container %s", containerID)

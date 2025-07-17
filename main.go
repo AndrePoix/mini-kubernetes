@@ -24,8 +24,8 @@ func main() {
 
     setupRoutes()
 
-    go schedulePods()
-    go nodeAgent(nodes[0])
+    go schedulePods(ctx )
+    go nodeAgent(ctx, nodes[0])
 
     go func() {
         log.Println("API server listening on :8080")

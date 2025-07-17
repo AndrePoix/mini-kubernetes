@@ -3,9 +3,10 @@ package main
 import (
     "log"
     "time"
+    "context"
 )
 
-func schedulePods() {
+func schedulePods(parentContext context.Context) {
     for {
         mu.Lock()
         for _, pod := range pods {
