@@ -15,4 +15,8 @@ type PodSpec struct {
     CPURequest int    `json:"cpu_request"` // milliCPU
     MemRequest int    `json:"mem_request"` // MB
     NodeName   string `json:"node,omitempty"` // assigned node
+
+    //for networking
+    ExposePort  string `json:"expose_port,omitempty"`   
+    HostPort    string `json:"host_port,omitempty"`
 }

@@ -43,22 +43,29 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
 
             if !running {
                 log.Printf("Starting container for pod %s\n", pod.Name)
-                resp, err := cli.ContainerCreate(ctx, &container.Config{
+
+                containerConfig := &container.Config{
                     Image: pod.Image,
                     Tty:   true,
-                    ExposedPorts: nat.PortSet{
-                        "8080/tcp": struct{}{},
-                    },
-                }, &container.HostConfig{
-                    PortBindings: nat.PortMap{
-                        "80/tcp": []nat.PortBinding{
+                }
+
+                hostConfig := &container.HostConfig{}
+                if (pod.ExposePort != "" && pod.HostPort != ""){
+                    hostConfig.PortBindings = nat.PortMap{
+                         nat.Port(pod.ExposePort + "/tcp"): []nat.PortBinding{
                             {
                                 HostIP:   "127.0.0.1",
-                                HostPort: "8081",
+                                HostPort: pod.HostPort,
                             },
                         },
-                    },
-                }, nil, nil, pod.Name)
+                    }
+                    
+                    containerConfig.ExposedPorts = nat.PortSet{
+                        nat.Port(pod.ExposePort + "/tcp"): struct{}{},
+                    }
+                }
+            
+                resp, err := cli.ContainerCreate(ctx,containerConfig ,hostConfig, nil, nil, pod.Name)
                 startedContainers = append(startedContainers, resp.ID)
                 if err != nil {
                     log.Println("Error creating container:", err)
