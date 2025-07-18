@@ -53,6 +53,9 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
                 if pod.CPURequest > 0 {
                     hostConfig.Resources.NanoCPUs = int64(pod.CPURequest) * 1_000_000  // milliCPU to nanoCPU
                 }
+                if pod.MemRequest > 0 {
+                    hostConfig.Resources.Memory = int64(pod.MemRequest)  // in bytes
+                }
                 if (pod.ExposePort != "" && pod.HostPort != ""){
                     hostConfig.PortBindings = nat.PortMap{
                          nat.Port(pod.ExposePort + "/tcp"): []nat.PortBinding{
