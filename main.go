@@ -2,7 +2,6 @@ package main
 
 import (
     "log"
-    "net/http"
     "context"
     "sync"
     "os/signal"
@@ -34,19 +33,11 @@ func main() {
     go schedulePods(ctx )
     go nodeAgent(ctx, nodes[0], cli)
 
-    go func() {
-        log.Println("API server listening on :8080")
-        if err := http.ListenAndServe(":8080", nil); err != nil && err != http.ErrServerClosed {
-            log.Fatalf("HTTP server error: %v", err)
-        }
-    }()
 
     <-ctx.Done() // Wait for signal
     log.Println("Interrupt received, cleaning up containers...")
 
-    if err := cleanupContainers(cli); err != nil {
-        log.Printf("Error during cleanup: %v", err)
-    }
+    cleanupContainers(cli)
 
     log.Println("Cleanup complete, exiting")
 }
