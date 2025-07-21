@@ -12,7 +12,7 @@ import (
 
 var (
     nodes = []*Node{
-        {Name: "node1", TotalCPU: 2000, TotalMem: 2_048_000_000}, // 2 cpu and 2gb
+        {Name: "node1", TotalCPU: 2_000, TotalMem: 2_048_000_000}, // 2 cpu and 2gb
     }
     pods []*PodSpec
     mu sync.Mutex // shared mutex for pods and nodes
