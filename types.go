@@ -1,5 +1,15 @@
 package main
 
+type PodPhase string
+const (
+    Pending    PodPhase = "Pending" // waiting for container creation
+    Running    PodPhase = "Running"
+    Stopped    PodPhase = "Stopped" 
+    Terminating PodPhase = "Terminating" //waiting for delete
+    Succeeded  PodPhase = "Succeeded"
+    Failed     PodPhase = "Failed"
+)
+
 type Node struct {
     Name     string
     TotalCPU int // milliCPU (1000 = 1 CPU)
@@ -22,8 +32,7 @@ type PodSpecInput struct {
 
 type PodSpec struct {
     PodSpecInput
-    Running bool `json:"running"`
+    Phase       PodPhase
     NodeName   string `json:"node,omitempty"` // assigned node
     ContainerID string `json:"container_id"`
-    ToDelete bool `json:-`
 }

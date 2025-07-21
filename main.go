@@ -37,7 +37,7 @@ func main() {
     <-ctx.Done() // Wait for signal
     log.Println("Interrupt received, cleaning up containers...")
 
-    cleanupContainers(cli)
+    cleanupContainers(cli, nodes[0])
 
     log.Println("Cleanup complete, exiting")
 }

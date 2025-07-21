@@ -22,8 +22,9 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
         
         for _, pod := range podsCopy {
 
-            if !pod.Running {
-                pod.Running = true
+            switch pod.Phase {
+            case Pending : 
+                pod.Phase = Running
                 log.Printf("Starting container for pod %s\n", pod.Name)
                 containerConfig := &container.Config{
                     Image: pod.Image,
@@ -64,63 +65,54 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
                     log.Println("Error starting container:", err)
                     continue
                 }
+            case Stopped :
+                err := deleteContainer(cli, pod, node)
+                if err != nil {
+                    log.Println("Error deleting container:", err)
+                    continue
+                }
+                pod.Phase = Terminating
             }
         }
         time.Sleep(10 * time.Second)
     }
 }
 
-func deleteContainer(cli *client.Client, containerID string) error {
+func deleteContainer(cli *client.Client, pod *PodSpec, node *Node) error {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
     timeoutSecs := 5 
-    log.Printf("Stopping container %s", containerID)
-    err := cli.ContainerStop(ctx, containerID, container.StopOptions{
+    log.Printf("Stopping container %s", pod.ContainerID)
+    err := cli.ContainerStop(ctx, pod.ContainerID, container.StopOptions{
         Timeout: &timeoutSecs,
     })
 
     if err != nil {
-        log.Printf("Failed to stop container %s: %v. Will try force remove", containerID, err)
+        log.Printf("Failed to stop container %s: %v. Will try force remove", pod.ContainerID, err)
 
         // Try force remove
-        removeErr := cli.ContainerRemove(ctx, containerID, container.RemoveOptions{
+        removeErr := cli.ContainerRemove(ctx, pod.ContainerID, container.RemoveOptions{
             Force: true,
         })
         if removeErr != nil {
-            log.Printf("Force remove failed for %s: %v", containerID, removeErr)
+            log.Printf("Force remove failed for %s: %v", pod.ContainerID, removeErr)
             return removeErr
         } else {
-            log.Printf("Force removed container %s", containerID)
+            log.Printf("Force removed container %s", pod.ContainerID)
         }
     }
-    err = cli.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+    err = cli.ContainerRemove(ctx, pod.ContainerID, container.RemoveOptions{})
 
-    if err != nil {
-        return err
-    }
-
-    mu.Lock()
-    // Filter node.Pods to remove this pod
-    newPods := make([]*PodSpec, 0, len(node.Pods))
-    for _, p := range node.Pods {
-        if p.ContainerID != pod.ContainerID {
-            newPods = append(newPods, p)
-        }
-    }
-    node.Pods = newPods
-    pod = nil // free for the garbage collector
-    mu.Unlock()
-
-    return nil 
+    return err
 }
 
-func cleanupContainers(cli *client.Client) {
+func cleanupContainers(cli *client.Client, node *Node) {
     mu.Lock()
     podsCopy := make([]*PodSpec, len(node.Pods))
     copy(podsCopy, node.Pods)
     mu.Unlock()
 
     for _, pod := range podsCopy {
-        deleteContainer(cli, pod.ContainerID)
+        deleteContainer(cli, pod, node)
     }
 }

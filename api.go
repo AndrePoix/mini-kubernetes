@@ -17,8 +17,7 @@ func createPodHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
     pod := PodSpec{
         PodSpecInput: inputPod,
-        Running: false,
-        ToDelete: false,
+        Phase: Pending,
     }
 
     mu.Lock()
@@ -50,7 +49,7 @@ func deletePodHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 
     for _, pod := range pods {
         if pod.Name == name {
-            pod.ToDelete = true
+            pod.Phase = Stopped
             json.NewEncoder(w).Encode(map[string]string{
                 "message": "Pod marked for deletion",
                 "name":    name,
