@@ -19,31 +19,12 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
         podsCopy := make([]*PodSpec, len(node.Pods))
         copy(podsCopy, node.Pods)
         mu.Unlock()
+        
         for _, pod := range podsCopy {
-            ctx, cancel := context.WithTimeout(parentContext, 10*time.Second)
-            defer cancel()
-            containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
-            if err != nil {
-                log.Println("Error listing containers:", err)
-                continue
-            }
 
-            running := false
-            for _, c := range containers {
-                for _, name := range c.Names {
-                    if name == "/"+pod.Name {
-                        running = true
-                        break
-                    }
-                }
-                if running {
-                    break
-                }
-            }
-
-            if !running {
+            if !pod.Running {
+                pod.Running = true
                 log.Printf("Starting container for pod %s\n", pod.Name)
-
                 containerConfig := &container.Config{
                     Image: pod.Image,
                     Tty:   true,
@@ -71,14 +52,15 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
                     }
                 }
             
-                resp, err := cli.ContainerCreate(ctx,containerConfig ,hostConfig, nil, nil, pod.Name)
-                startedContainers = append(startedContainers, resp.ID)
+                resp, err := cli.ContainerCreate(parentContext,containerConfig ,hostConfig, nil, nil, pod.Name)
+                //assign ContainerID
+                pod.ContainerID = resp.ID
                 if err != nil {
                     log.Println("Error creating container:", err)
                     continue
                 }
 
-                if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+                if err := cli.ContainerStart(parentContext, resp.ID, container.StartOptions{}); err != nil {
                     log.Println("Error starting container:", err)
                     continue
                 }
@@ -92,7 +74,7 @@ func deleteContainer(cli *client.Client, containerID string) error {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
     timeoutSecs := 5 
-        log.Printf("Stopping container %s", containerID)
+    log.Printf("Stopping container %s", containerID)
     err := cli.ContainerStop(ctx, containerID, container.StopOptions{
         Timeout: &timeoutSecs,
     })
@@ -101,7 +83,7 @@ func deleteContainer(cli *client.Client, containerID string) error {
         log.Printf("Failed to stop container %s: %v. Will try force remove", containerID, err)
 
         // Try force remove
-        removeErr := cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{
+        removeErr := cli.ContainerRemove(ctx, containerID, container.RemoveOptions{
             Force: true,
         })
         if removeErr != nil {
@@ -111,11 +93,34 @@ func deleteContainer(cli *client.Client, containerID string) error {
             log.Printf("Force removed container %s", containerID)
         }
     }
-    return nil
+    err = cli.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+
+    if err != nil {
+        return err
+    }
+
+    mu.Lock()
+    // Filter node.Pods to remove this pod
+    newPods := make([]*PodSpec, 0, len(node.Pods))
+    for _, p := range node.Pods {
+        if p.ContainerID != pod.ContainerID {
+            newPods = append(newPods, p)
+        }
+    }
+    node.Pods = newPods
+    pod = nil // free for the garbage collector
+    mu.Unlock()
+
+    return nil 
 }
 
 func cleanupContainers(cli *client.Client) {
-    for _, containerID := range startedContainers {
-        deleteContainer(cli, containerID)
+    mu.Lock()
+    podsCopy := make([]*PodSpec, len(node.Pods))
+    copy(podsCopy, node.Pods)
+    mu.Unlock()
+
+    for _, pod := range podsCopy {
+        deleteContainer(cli, pod.ContainerID)
     }
 }

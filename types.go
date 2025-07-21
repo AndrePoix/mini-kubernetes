@@ -25,4 +25,5 @@ type PodSpec struct {
     Running bool `json:"running"`
     NodeName   string `json:"node,omitempty"` // assigned node
     ContainerID string `json:"container_id"`
+    ToDelete bool `json:-`
 }
