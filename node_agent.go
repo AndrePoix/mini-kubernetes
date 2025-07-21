@@ -88,39 +88,34 @@ func nodeAgent(parentContext context.Context, node *Node, cli *client.Client) {
     }
 }
 
-func cleanupContainers(cli *client.Client) error {
+func deleteContainer(cli *client.Client, containerID string) error {
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
-
-
-    for _, containerID := range startedContainers {
-        timeoutSecs := 5 
+    timeoutSecs := 5 
         log.Printf("Stopping container %s", containerID)
-        err := cli.ContainerStop(ctx, containerID, container.StopOptions{
-            Timeout: &timeoutSecs,
+    err := cli.ContainerStop(ctx, containerID, container.StopOptions{
+        Timeout: &timeoutSecs,
+    })
+
+    if err != nil {
+        log.Printf("Failed to stop container %s: %v. Will try force remove", containerID, err)
+
+        // Try force remove
+        removeErr := cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{
+            Force: true,
         })
-
-        if err != nil {
-            log.Printf("Failed to stop container %s: %v. Will try force remove", containerID, err)
-
-            // Try force remove
-            removeErr := cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{
-                Force: true,
-            })
-            if removeErr != nil {
-                log.Printf("Force remove failed for %s: %v", containerID, removeErr)
-            } else {
-                log.Printf("Force removed container %s", containerID)
-            }
-
-            return nil
-        }
-
-        log.Printf("Removing container %s", containerID)
-        err = cli.ContainerRemove(ctx, containerID, container.RemoveOptions{})
-        if err != nil {
-            log.Printf("Failed to remove container %s: %v", containerID, err)
+        if removeErr != nil {
+            log.Printf("Force remove failed for %s: %v", containerID, removeErr)
+            return removeErr
+        } else {
+            log.Printf("Force removed container %s", containerID)
         }
     }
     return nil
+}
+
+func cleanupContainers(cli *client.Client) {
+    for _, containerID := range startedContainers {
+        deleteContainer(cli, containerID)
+    }
 }
