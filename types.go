@@ -9,14 +9,20 @@ type Node struct {
     Pods     []*PodSpec
 }
 
-type PodSpec struct {
+type PodSpecInput struct {
     Name       string `json:"name"`
     Image      string `json:"image"`
     CPURequest int    `json:"cpu_request"` // milliCPU
     MemRequest int    `json:"mem_request"` // MB
-    NodeName   string `json:"node,omitempty"` // assigned node
 
     //for networking
     ExposePort  string `json:"expose_port,omitempty"`   
     HostPort    string `json:"host_port,omitempty"`
+}
+
+type PodSpec struct {
+    PodSpecInput
+    Running bool `json:"running"`
+    NodeName   string `json:"node,omitempty"` // assigned node
+    ContainerID string `json:"container_id"`
 }

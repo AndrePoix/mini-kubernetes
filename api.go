@@ -9,10 +9,15 @@ import (
 
 
 func createPodHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-    var pod PodSpec
-    if err := json.NewDecoder(r.Body).Decode(&pod); err != nil {
+    var inputPod PodSpecInput
+    if err := json.NewDecoder(r.Body).Decode(&inputPod); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
+    }
+
+    pod := PodSpec{
+        PodSpecInput: inputPod,
+        Running: false,
     }
 
     mu.Lock()
