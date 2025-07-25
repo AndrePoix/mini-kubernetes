@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"mini-kubernetes/pkg"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -20,7 +22,7 @@ func (c *Client) initClient(parentCtx context.Context) {
 	if err != nil {
 		log.Fatalf("Failed to create Docker client: %v", err)
 	}
-	c.ctx = context.TODO()
+	c.ctx = context.Background()
 	c.cli = cli
 
 	go func() {
@@ -29,9 +31,9 @@ func (c *Client) initClient(parentCtx context.Context) {
 	}()
 }
 
-func (c *Client) startContainer(pod *Pod) {
+func (c *Client) startContainer(pod *pkg.Pod) {
 
-	pod.Phase = Running
+	pod.Phase = pkg.Running
 	log.Printf("Starting container for pod %s\n", pod.Name)
 	containerConfig := &container.Config{
 		Image: pod.Image,
@@ -64,17 +66,17 @@ func (c *Client) startContainer(pod *Pod) {
 	//assign ContainerID
 	pod.ContainerID = resp.ID
 	if err != nil {
-		pod.Phase = Failed
+		pod.Phase = pkg.Failed
 		log.Println("Error creating container:", err)
 	}
 
 	if err := c.cli.ContainerStart(c.ctx, resp.ID, container.StartOptions{}); err != nil {
-		pod.Phase = Failed
+		pod.Phase = pkg.Failed
 		log.Println("Error starting container:", err)
 	}
 }
 
-func (c *Client) deleteContainer(pod *Pod) {
+func (c *Client) deleteContainer(pod *pkg.Pod) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	timeoutSecs := 5
@@ -95,9 +97,13 @@ func (c *Client) deleteContainer(pod *Pod) {
 			return
 		} else {
 			log.Printf("Force removed container %s", pod.ContainerID)
+			return
 		}
 	}
 
 	err = c.cli.ContainerRemove(ctx, pod.ContainerID, container.RemoveOptions{})
-	pod.Phase = Stopped
+	if err != nil {
+		log.Printf("Failed to remove container %s: %v.", pod.ContainerID, err)
+	}
+	pod.Phase = pkg.Stopped
 }

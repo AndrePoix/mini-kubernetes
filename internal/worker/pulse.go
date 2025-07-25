@@ -1,11 +1,14 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
+
+	"mini-kubernetes/pkg"
 )
 
 type Pulse struct {
@@ -27,7 +30,7 @@ func (p *Pulse) startHeartbeat(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			go p.sendHeartbeat()
+			p.sendHeartbeat()
 		case <-ctx.Done():
 			return
 		}
@@ -35,14 +38,20 @@ func (p *Pulse) startHeartbeat(ctx context.Context) {
 }
 
 func (p *Pulse) sendHeartbeat() {
-	resp, err := http.Post(p.masterURL+"/heartbeat", "application/json", nil)
+
+	data, err := json.Marshal(p.node.NodeInfo)
+	if err != nil {
+		// handle error
+	}
+	resp, err := http.Post(p.masterURL+"/heartbeat", "application/json", bytes.NewReader(data))
 	if err != nil {
 		log.Println("Erreur heartbeat:", err)
 		return
 	}
 	defer resp.Body.Close()
 
-	var pods []*Pod
+	var pods []*pkg.Pod
+	log.Println(resp.Body)
 	if err := json.NewDecoder(resp.Body).Decode(&pods); err != nil {
 		log.Println("Erreur décodage pods:", err)
 		return

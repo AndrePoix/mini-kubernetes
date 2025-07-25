@@ -1,4 +1,4 @@
-package worker
+package pkg
 
 type PodPhase string
 
@@ -27,4 +27,13 @@ type Pod struct {
 	Phase       PodPhase
 	NodeName    string `json:"node,omitempty"` // assigned node
 	ContainerID string `json:"container_id"`
+}
+
+type NodeInfo struct {
+	Name     string
+	TotalCPU int // milliCPU (1000 = 1 CPU)
+	TotalMem int // MB
+	UsedCPU  int
+	UsedMem  int
+	Pods     []*Pod
 }

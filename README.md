@@ -18,6 +18,7 @@ This project is a lightweight container orchestrator written in Go, inspired by 
 -  **HTTP REST API**:
   - `POST /pods`: Create a new pod
   - `GET /pods`: List all created pods
+  - `DELETE /pods/:name`: Delete the container with the indicated name
 
 ---
 
@@ -31,6 +32,6 @@ Check `go.mod` to see the requirements and run `go mod tidy`
 ### Clone and Run
 
 ```bash
-git clone https://github.com/your-username/go-docker-orchestrator.git
-cd go-docker-orchestrator
+git clone https://github.com/AndrePoix/mini-kubernetes.git
+cd mini-kubernetes
 go run .
