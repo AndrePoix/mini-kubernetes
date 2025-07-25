@@ -39,7 +39,7 @@ func (nm *NodeManager) SchedulePods() {
 				node.TotalMem-node.UsedMem >= pod.MemRequest {
 
 				pod.NodeName = node.Name
-				pod.Phase = pkg.Running
+				pod.Phase = pkg.Send
 
 				node.UsedCPU += pod.CPURequest
 				node.UsedMem += pod.MemRequest
@@ -73,15 +73,29 @@ func (nm *NodeManager) RegisterNode(info pkg.NodeInfo) {
 	}
 }
 
-func (nm *NodeManager) GetAssignedPods(nodeName string) []*pkg.Pod {
+func (nm *NodeManager) GetAssignedPods(nodeName string) []pkg.Pod {
 	nm.mu.RLock()
 	defer nm.mu.RUnlock()
-
 	node, exists := nm.nodes[nodeName]
 	if !exists {
 		return nil
 	}
-	return node.PodsAssigned
+	pods := make([]pkg.Pod, 0, len(node.PodsAssigned))
+	for _, p := range node.PodsAssigned {
+		pods = append(pods, *p)
+	}
+	return pods
+}
+
+func (nm *NodeManager) ClearAssignedPods(nodeName string) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+
+	node, exists := nm.nodes[nodeName]
+	if !exists {
+		return
+	}
+	node.PodsAssigned = node.PodsAssigned[:0]
 }
 
 func (nm *NodeManager) AssignPodToBeScheduled(pod *pkg.Pod) {

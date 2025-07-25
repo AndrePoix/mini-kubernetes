@@ -64,6 +64,9 @@ func (api *Api) heartbeatHandler(w http.ResponseWriter, r *http.Request, _ httpr
 	log.Println("Registering : ", nodeInfo)
 	api.NodeManager.RegisterNode(nodeInfo)
 	assigned := api.NodeManager.GetAssignedPods(nodeInfo.Name)
+	api.NodeManager.ClearAssignedPods(nodeInfo.Name)
+
+	log.Println("Sendin : ", assigned)
 
 	json.NewEncoder(w).Encode(assigned)
 }

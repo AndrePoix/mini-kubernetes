@@ -3,7 +3,8 @@ package pkg
 type PodPhase string
 
 const (
-	Pending   PodPhase = "Pending" // waiting for container creation
+	Pending   PodPhase = "Pending" // waiting for to be send
+	Send      PodPhase = "Send"
 	Running   PodPhase = "Running"
 	Stopping  PodPhase = "Stopping" //waiting for delete
 	Stopped   PodPhase = "Stopped"

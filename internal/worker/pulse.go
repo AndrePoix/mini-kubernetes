@@ -24,6 +24,7 @@ func (p *Pulse) newPulse(inter time.Duration, n *Node, mURL string) {
 }
 
 func (p *Pulse) startHeartbeat(ctx context.Context) {
+	log.Println("starting heartbeat")
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
@@ -41,11 +42,11 @@ func (p *Pulse) sendHeartbeat() {
 
 	data, err := json.Marshal(p.node.NodeInfo)
 	if err != nil {
-		// handle error
+		//TODO handle error
 	}
 	resp, err := http.Post(p.masterURL+"/heartbeat", "application/json", bytes.NewReader(data))
 	if err != nil {
-		log.Println("Erreur heartbeat:", err)
+		log.Println("erreur heartbeat:", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -53,9 +54,10 @@ func (p *Pulse) sendHeartbeat() {
 	var pods []*pkg.Pod
 	log.Println(resp.Body)
 	if err := json.NewDecoder(resp.Body).Decode(&pods); err != nil {
-		log.Println("Erreur décodage pods:", err)
+		log.Println("erreur décodage pods:", err)
 		return
 	}
+	log.Println(pods)
 
 	p.node.addPods(pods)
 }

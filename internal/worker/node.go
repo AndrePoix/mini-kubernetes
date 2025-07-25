@@ -24,23 +24,28 @@ func (n *Node) initNodeClient() {
 }
 
 func (n *Node) nodeAgent() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		// We copy to not lock the mutex for too long
-		n.mu.Lock()
-		podsCopy := make([]*pkg.Pod, len(n.Pods))
-		copy(podsCopy, n.Pods)
-		n.mu.Unlock()
+		select {
+		case <-context.Background().Done(): //TODO Context cancel
+			return
+		case <-ticker.C:
+			n.mu.Lock()
+			pods := make([]*pkg.Pod, len(n.Pods))
+			copy(pods, n.Pods)
+			n.mu.Unlock()
 
-		for _, pod := range podsCopy {
-
-			switch pod.Phase {
-			case pkg.Pending:
-				n.cli.startContainer(pod)
-			case pkg.Stopped:
-				n.cli.deleteContainer(pod)
+			for _, pod := range pods {
+				switch pod.Phase {
+				case pkg.Send:
+					n.cli.startContainer(pod)
+				case pkg.Stopping:
+					n.cli.deleteContainer(pod)
+				}
 			}
 		}
-		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -51,7 +56,7 @@ func (n *Node) cleanupContainers() {
 	n.mu.Unlock()
 
 	for _, pod := range podsCopy {
-		go n.cli.deleteContainer(pod)
+		n.cli.deleteContainer(pod) //maybe do go ?
 	}
 }
 

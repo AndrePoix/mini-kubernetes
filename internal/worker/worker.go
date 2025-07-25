@@ -38,5 +38,7 @@ func (w *Worker) Start() {
 
 	w.node.cleanupContainers()
 
+	time.Sleep(1 * time.Second) //TODO a signal is better, and must stop all other goroutine time to do context i guess, wait a bit to be sure the containere were removed
+
 	log.Println("Cleanup complete, exiting")
 }

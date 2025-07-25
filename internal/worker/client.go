@@ -79,7 +79,7 @@ func (c *Client) startContainer(pod *pkg.Pod) {
 func (c *Client) deleteContainer(pod *pkg.Pod) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	timeoutSecs := 5
+	timeoutSecs := 2
 	log.Printf("Stopping container %s", pod.ContainerID)
 	err := c.cli.ContainerStop(ctx, pod.ContainerID, container.StopOptions{
 		Timeout: &timeoutSecs,
