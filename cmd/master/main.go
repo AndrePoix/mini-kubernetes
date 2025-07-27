@@ -5,14 +5,6 @@ import (
 )
 
 func main() {
-	nodeManager := master.NewNodeManager()
-	api := &master.Api{
-		NodeManager: nodeManager,
-	}
-
-	m := &master.Master{
-		NodeManager: nodeManager,
-		Api:         api,
-	}
+	m := master.NewMaster()
 	m.Start()
 }

@@ -7,6 +7,10 @@
 *.dll
 *.so
 *.dylib
+*.pb.go
+*.crt
+*.key
+*.csr
 
 # Test binary, built with `go test -c`
 *.test

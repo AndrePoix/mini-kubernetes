@@ -2,25 +2,48 @@ package worker
 
 import (
 	"context"
+	"mini-kubernetes/pkg"
 	"sync"
 	"time"
-
-	"mini-kubernetes/pkg"
 )
 
 type Node struct {
 	pkg.NodeInfo
-
 	mu  sync.Mutex
 	cli *Client
 	ctx context.Context
 }
 
-func (n *Node) initNodeClient() {
-	if n.cli == nil {
-		n.cli = &Client{}
+func NewNode(ctx context.Context, nodeInfo pkg.NodeInfo) (*Node, error) {
+	// Initialize Docker client
+	cli := &Client{}
+	cli.initClient(ctx)
+
+	return &Node{
+		NodeInfo: nodeInfo,
+		cli:      cli,
+		ctx:      ctx,
+	}, nil
+}
+
+func (n *Node) GetNodeInfo() pkg.NodeInfo {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	usedCPU := 0
+	usedMem := 0
+
+	for _, pod := range n.Pods {
+		if pod.Phase == pkg.Running {
+			usedCPU += pod.CPURequest
+			usedMem += pod.MemRequest
+		}
 	}
-	n.cli.initClient(n.ctx)
+
+	n.UsedCPU = usedCPU
+	n.UsedMem = usedMem
+
+	return n.NodeInfo
 }
 
 func (n *Node) nodeAgent() {
@@ -29,22 +52,28 @@ func (n *Node) nodeAgent() {
 
 	for {
 		select {
-		case <-context.Background().Done(): //TODO Context cancel
+		case <-n.ctx.Done():
 			return
 		case <-ticker.C:
-			n.mu.Lock()
-			pods := make([]*pkg.Pod, len(n.Pods))
-			copy(pods, n.Pods)
-			n.mu.Unlock()
+			n.processPods()
+		}
+	}
+}
 
-			for _, pod := range pods {
-				switch pod.Phase {
-				case pkg.Send:
-					n.cli.startContainer(pod)
-				case pkg.Stopping:
-					n.cli.deleteContainer(pod)
-				}
-			}
+func (n *Node) processPods() {
+	n.mu.Lock()
+	pods := make([]*pkg.Pod, len(n.Pods))
+	copy(pods, n.Pods)
+	n.mu.Unlock()
+
+	for _, pod := range pods {
+		switch pod.Phase {
+		case pkg.Send:
+			n.cli.startContainer(pod)
+		case pkg.Stopping:
+			n.cli.deleteContainer(pod)
+		case pkg.Stopped:
+			n.removePod(pod)
 		}
 	}
 }
@@ -56,12 +85,41 @@ func (n *Node) cleanupContainers() {
 	n.mu.Unlock()
 
 	for _, pod := range podsCopy {
-		n.cli.deleteContainer(pod) //maybe do go ?
+		if pod.ContainerID != "" {
+			n.cli.deleteContainer(pod)
+		}
 	}
 }
 
 func (n *Node) addPods(pods []*pkg.Pod) {
 	n.mu.Lock()
-	n.Pods = append(n.Pods, pods...)
-	n.mu.Unlock()
+	defer n.mu.Unlock()
+
+	for _, newPod := range pods {
+		// Check if pod already exist to avoid duplicates
+		exists := false
+		for _, existingPod := range n.Pods {
+			if existingPod.Name == newPod.Name {
+				exists = true
+				break
+			}
+		}
+
+		if !exists {
+			n.Pods = append(n.Pods, newPod)
+		}
+	}
+}
+
+func (n *Node) removePod(podToRemove *pkg.Pod) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	for i, pod := range n.Pods {
+		if pod.Name == podToRemove.Name {
+			// Remove pod from slice
+			n.Pods = append(n.Pods[:i], n.Pods[i+1:]...)
+			break
+		}
+	}
 }

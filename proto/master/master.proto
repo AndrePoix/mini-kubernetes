@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package master;
+
+option go_package = "mini-kubernetes/proto/master";
+
+import "google/protobuf/timestamp.proto";
+
+// Pod specification input
+message PodSpecInput {
+  string name = 1;
+  string image = 2;
+  int32 cpu_request = 3;
+  int32 mem_request = 4;
+  string expose_port = 5;
+  string host_port = 6;
+}
+
+// Pod phases
+enum PodPhase {
+  PENDING = 0;
+  SEND = 1;
+  RUNNING = 2;
+  STOPPING = 3;
+  STOPPED = 4;
+  SUCCEEDED = 5;
+  FAILED = 6;
+}
+
+// Pod definition
+message Pod {
+  PodSpecInput spec = 1;
+  PodPhase phase = 2;
+  string node_name = 3;
+  string container_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// Node information
+message NodeInfo {
+  string name = 1;
+  int32 total_cpu = 2;
+  int32 total_mem = 3;
+  int32 used_cpu = 4;
+  int32 used_mem = 5;
+  repeated Pod pods = 6;
+  google.protobuf.Timestamp last_heartbeat = 7;
+}
+
+// Request/Response messages
+message CreatePodRequest {
+  PodSpecInput pod_spec = 1;
+}
+
+message CreatePodResponse {
+  string message = 1;
+  int32 code = 2;
+  Pod pod = 3;
+}
+
+message ListPodsRequest {
+  string namespace = 1;
+  map<string, string> label_selector = 2;
+}
+
+message ListPodsResponse {
+  repeated Pod pods = 1;
+}
+
+message DeletePodRequest {
+  string name = 1;
+  string namespace = 2;
+}
+
+message DeletePodResponse {
+  string message = 1;
+  int32 code = 2;
+}
+
+message HeartbeatRequest {
+  NodeInfo node_info = 1;
+}
+
+message HeartbeatResponse {
+  repeated Pod assigned_pods = 1;
+  string status = 2;
+}
+
+// Master service definition
+service MasterService {
+  // Pod management
+  rpc CreatePod(CreatePodRequest) returns (CreatePodResponse);
+  rpc ListPods(ListPodsRequest) returns (ListPodsResponse);
+  rpc DeletePod(DeletePodRequest) returns (DeletePodResponse);
+  
+  // Node management
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  
+  // Streaming for real-time updates
+  rpc WatchPods(ListPodsRequest) returns (stream Pod);
+  rpc NodeHeartbeatStream(stream HeartbeatRequest) returns (stream HeartbeatResponse);
+}
