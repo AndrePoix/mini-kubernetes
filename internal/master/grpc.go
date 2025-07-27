@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -36,7 +37,12 @@ func (s *GRPCServer) Start() error {
 		return fmt.Errorf("failed to listen on port %s: %v", s.port, err)
 	}
 
-	s.server = grpc.NewServer()
+	creds, err := credentials.NewServerTLSFromFile("certs/server.crt", "certs/server.key")
+	if err != nil {
+		log.Fatalf("failed to load TLS keys: %v", err)
+	}
+
+	s.server = grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterMasterServiceServer(s.server, s)
 
 	log.Printf("gRPC server listening on port %s", s.port)

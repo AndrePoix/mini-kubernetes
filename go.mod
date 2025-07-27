@@ -5,7 +5,6 @@ go 1.23.0
 require (
 	github.com/docker/docker v28.3.2+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/julienschmidt/httprouter v1.3.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )

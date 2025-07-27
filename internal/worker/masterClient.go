@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 
 	"mini-kubernetes/pkg"
 	pb "mini-kubernetes/proto/master"
@@ -22,7 +22,13 @@ type MasterClient struct {
 }
 
 func NewMasterClient(masterAddr string, interval time.Duration, node *Node) (*MasterClient, error) {
-	conn, err := grpc.NewClient(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	creds, err := credentials.NewClientTLSFromFile("certs/server.crt", "")
+	if err != nil {
+		log.Fatalf("failed to load server TLS certificate: %v", err)
+	}
+
+	conn, err := grpc.NewClient(masterAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to master: %v", err)
 	}
